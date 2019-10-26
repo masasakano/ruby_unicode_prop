@@ -1,0 +1,186 @@
+#!/usr/bin/env ruby
+# -*- coding: utf-8 -*-
+
+# Script to print a list of either/both characters or hexadecimal codepoints of
+# the specified Unicode properties.
+#
+# @author: M. Sakano (Wise Babel Ltd)
+
+require 'optparse'
+require 'net/http'
+require 'uri'
+
+URL_RUBY_UNICODE_PROPS = 'https://raw.githubusercontent.com/k-takata/Onigmo/master/doc/UnicodeProps.txt'
+MAX_UNICODE_HEX = 0x2FFFF  # Plane 0-2 (up to Supplementary Ideographic Plane) of Unicode
+
+BANNER = <<"__EOF__"
+USAGE: #{File.basename($0)} [options] Property1 [Property2, ...]
+  Print all the characters and/or their hex-codepoints that have
+  the given "Unicode property" used in Ruby Regexp like \\p{Currency_Symbol}
+  (or POSIX expression like [[:blank:]] if -p option is given).
+__EOF__
+
+# Initialising the hash for the command-line options.
+OPTS = {
+  with_char: true,
+  with_codepoint: true,
+  delimiter: nil,
+  posix: false,
+  lowercase: false,
+  list_property: false,
+  # :chatter => 3,        # Default
+  debug: false,
+}
+
+# Function to handle the command-line arguments.
+#
+# ARGV will be modified, and the constant variable OPTS is set.
+#
+# @return [Hash]  Optional-argument hash.
+#
+def handle_argv
+  opt = OptionParser.new(BANNER)
+  opt.separator ""
+  opt.separator "Options:"
+  opt.on('-c', '--[no-]without-codepoint', sprintf("Print characters only? (Def: %s)", (!OPTS[:with_codepoint]).inspect), FalseClass){|v| OPTS[:with_codepoint] = v} # memo: "-c" for "Characters only"
+  opt.on('-n', '--[no-]without-char',      sprintf("Print codepoints only? (Def: %s)", (!OPTS[:with_char]).inspect),      FalseClass){|v| OPTS[:with_char] = v}      # memo: "-n" for "codepoints Number only"
+  opt.on('-d', '--delimiter=CHAR', sprintf("Delimeter in output.", OPTS[:delimiter].inspect)) {|v| OPTS[:delimiter] = v}
+  opt.on('-l', '--[no-]lowercase', sprintf("Lower cases alphabets are used for Hex in codepoints (Def: %s)", OPTS[:lowercase].inspect)) {|v| OPTS[:lowercase] = v} # memo: "-l" for "Lower case"
+  opt.on('-p', '--[no-]posix', sprintf("Use POSIX expression instead of Unicode (Def: %s)", OPTS[:posix].inspect)) {|v| OPTS[:posix] = v} # memo: "-p" for "POSIX"
+  opt.on(      '--[no-]list-property', 'Print all the Ruby Unicode properties and exit.') {|v| OPTS[:list_property] = v}
+  # opt.on(  '--version', "Display the version and exits.", TrueClass) {|v| OPTS[:version] = v}  # Consider opts.on_tail
+  # opt.on(  '--[no-]debug', "Debug (Def: false)") {|v| OPTS[:debug] = v}
+  opt.separator ""
+  opt.separator "Note1: Delimeter means one"
+  opt.separator "  (1) between multiple characters and codepoints if either of -n or -c is specified (Default: Null for -c (characters only) and a new line for -n."
+  opt.separator "  (2) between the number and character of each pair if both are specified (Def: a whitespace), whereas the delimeter between pairs is always a newline."
+  opt.separator "  To specify a newline as a delimiter, give 'NL'"
+  opt.separator "Note2: Properties differ for '-p', 'ascii' in POSIX and 'ASCII' in Unicode."
+  opt.separator "Reference: https://github.com/k-takata/Onigmo/blob/master/doc/UnicodeProps.txt"
+  # opt.separator "  Ruby-Source: /enc/unicode/name2ctype.h"
+
+  opt.parse!(ARGV)
+
+  # exit if --list-property
+  (puts get_file_unicode_properties; exit 1) if OPTS[:list_property]
+
+  if !OPTS[:with_char] && !OPTS[:with_codepoint]
+    warn "Specify (or do not specify at all) what to print (do not specify -p and -c simultaneously)."
+    exit 1
+  end
+
+  if ARGV.size == 0
+    warn "ERROR: Specify Unicode property(ies). To see help, run #{File.basename($0)} --help"
+    exit 1
+  end
+
+  # Adjustments
+  OPTS[:delimiter] = "\n" if 'NL' == OPTS[:delimiter]  # Special case; 'NL' means a newline.
+  OPTS[:delimiter] ||= 
+    if    OPTS[:with_char] && OPTS[:with_codepoint]
+      " "
+    elsif OPTS[:with_char]
+      ""
+    else
+      $/
+    end
+
+  OPTS
+end
+
+# Returns the array of characters that satisfies the Property conditions.
+#
+# @param argv [ARGV]
+# @param opts [Hash] Hash of command-line options.
+# @return [Array]
+def get_ary_chars(argv, opts)
+  if opts[:posix]
+    # for 'ascii' and 'blank', joined as [[:ascii:][:blank:]]
+    fmt1 = '[%s]'
+    fmt2 = '[:%s:]'
+    fmt_deli = ""
+  else
+    # for 'ASCII' and 'Digit', joined as (?:\p{ASCII}|\p{Digit})
+    fmt1 = '(?:%s)'
+    fmt2 = '\\p{%s}'
+    fmt_deli = '|'
+  end
+
+  prop_q = fmt1 % argv.map{|c| fmt2 % Regexp.quote(c)}.join(fmt_deli)
+
+  fmt0 = (opts[:lowercase] ? "%04x" : "%04X")
+
+  arret = []
+  begin
+    (0..MAX_UNICODE_HEX).each do |i|
+      s = i.chr(Encoding::UTF_8) rescue next  # invalid codepoint 0xD800 in UTF-8 (RangeError)
+      next if Regexp.new(prop_q) !~ s
+      arret <<
+      if    opts[:with_char] && opts[:with_codepoint]
+        (fmt0+"%s%s") % [i, opts[:delimiter], s]
+      elsif opts[:with_char]
+        s
+      else
+        fmt0 % i
+      end
+    end
+  rescue RegexpError => er
+    warn '(RegexpError) '+er.message
+    exit 1
+  end
+
+  arret
+end
+
+
+# Returns the array of characters that satisfies the Property conditions.
+#
+# If encountering ERROR, this directly exits!
+#
+# @return [String]
+def get_file_unicode_properties
+  url = URL_RUBY_UNICODE_PROPS
+  #url = "http://google.com/naiyo.txt"
+  #url = "http://googlegoo345.com/naiyo.txt"
+  begin
+    resp = Net::HTTP.get_response( URI.parse url )
+  rescue SocketError => er
+    warn(er.message + "\nERROR: Host not reachable: " + url)
+    exit 1
+  end
+
+  return "Fetched from: %s\n%s" % [url, resp.body] if resp.code.to_i == 200
+
+  warn "ERROR in HTTP response (#{resp.code}) - File not found or something: "+url
+  exit 1
+end
+
+
+################################################
+# MAIN
+################################################
+
+$stdout.sync=true
+$stderr.sync=true
+
+# Handle the command-line options => OPTS
+begin
+  handle_argv()
+rescue OptionParser::InvalidOption, OptionParser::AmbiguousOption => er
+  warn er
+  exit 1
+end
+
+arret = get_ary_chars(ARGV, OPTS)
+
+if OPTS[:with_char] && OPTS[:with_codepoint]
+  puts arret.join($/)
+else
+  puts arret.join(OPTS[:delimiter])
+end
+
+exit
+
+__END__
+
+
