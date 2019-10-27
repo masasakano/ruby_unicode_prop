@@ -2,7 +2,6 @@
 
 # @author: M. Sakano (Wise Babel Ltd)
 
-require 'plain_text'
 require 'open3'
 
 $stdout.sync=true

@@ -6,7 +6,7 @@
 This package contains a standalone Ruby (executable) source file
 `bin/ruby_unicode_prop` - a command to be used from terminals etc, and it outputs (to STDOUT)
 Unicode characters and/or their hexagonal codepoints that satisfy one or more given expressions
-defined in Regexp in Ruby.  Specifically, they are `\p{XXX}` -type expressions (e.g., `\\p{Katakana}`)
+defined in Regexp in Ruby.  Specifically, they are `\p{XXX}` -type expressions (e.g., `\p{Katakana}`)
 for Unicode, as well as `[[:blank:]]` -type expressions for POSIX representation.
 
 The supplementary files are found in the top and `test` directories,
@@ -144,7 +144,7 @@ None.
 
 ## Copyright
 
-Author::  Masa Sakano < info a_t wisebabel dot com >
-Versions:: The versions of this package follow Semantic Versioning (2.0.0) http://semver.org/
+Author::  Masa Sakano < info a_t wisebabel dot com >  
+Versions:: The versions of this package follow Semantic Versioning (2.0.0) http://semver.org/  
 License:: MIT
 

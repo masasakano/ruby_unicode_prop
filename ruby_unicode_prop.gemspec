@@ -4,7 +4,7 @@ require 'rake'
 
 Gem::Specification.new do |s|
   s.name = %q{ruby_unicode_prop}.sub(/.*/){|c| (c == File.basename(Dir.pwd)) ? c : raise("ERROR: s.name=(#{c}) in gemspec seems wrong!")}
-  s.version = "1.0"
+  s.version = "1.0.1"
   # s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.bindir = 'bin'
   %w(ruby_unicode_prop).each do |f|
@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
     File.executable?(path) ? s.executables << f : raise("ERROR: Executable (#{path}) is not executable!")
   end
   s.authors = ["Masa Sakano"]
-  s.date = %q{2019-10-26}
+  s.date = %q{2019-10-27}
   s.summary = %q{Command to print the characters and hex-codepoints with the given Unicode properties}
   s.description = %q{This module provides utility functions and methods to handle plain text, classes Part/Paragraph/Boundary to represent the logical structure of a document and ParseRule to describe the rules to parse plain text to produce a Part-type Ruby instance.}
   # s.email = %q{abc@example.com}
