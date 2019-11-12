@@ -130,8 +130,11 @@ explicitly with your Ruby command as
 
 == Developer's note
 
-The master of this README file is found in
-[RubyGems/plain_text](https://rubygems.org/gems/ruby_unicode_prop)
+The master of this README file as well as the entire package is found in
+{RubyGems/ruby_unicode_prop}[https://rubygems.org/gems/ruby_unicode_prop]
+
+The source code is maintained also in
+{Github}[https://github.com/masasakano/ruby_unicode_prop]
 
 === Tests
 

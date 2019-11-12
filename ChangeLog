@@ -1,4 +1,9 @@
 -----
+(Version: 1.0.2)
+2019-11-12  Masa Sakano
+  * Updated the wrong description.
+
+-----
 (Version: 1.0.1)
 2019-10-27  Masa Sakano
   * Fixed a wrong require in test
